@@ -29,10 +29,14 @@ app.get('/',(req,res) => {
     res.send('<h1>Hello world</h1>')
 })
 
-app.get('/info', (req, res) => {
+app.get('/info', (req, res,next) => {
     const date = new Date()
-    res.send(`<p>Phonebook has info for ${persons.length} people</p>
-    <div>${date}</div>`)
+    Person.countDocuments({})
+        .then(count => {
+            res.send(`<p>Phonebook has info for ${count} people</p>
+            <div>${date}</div>`)
+        })
+        .catch(error => next(error))
 })
 
 app.get('/api/persons/:id', (req, res, next) => {
