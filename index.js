@@ -15,32 +15,14 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms :b
 
 
 let persons = [
-    {
-        id: 1,
-        name: 'Arto Hellas',
-        number: '040-123456'
-    },
-    {
-        id: 2,
-        name: 'Ada Lovelace',
-        number: '39-44-5323523'
-    },
-    {
-        id: 3,
-        name: 'Johnny Deff',
-        number: '715473'
-    },
-    {
-        id: 4,
-        name: 'Rico Jones',
-        number: '343-83465'
-    }
 ]
 
-app.get('/api/persons', (req, res) => {
-    Person.find({}).then(persons=> {
+app.get('/api/persons', (req, res,next) => {
+    Person.find({})
+    .then(persons=> {
         res.json(persons)
     })
+    .catch(error => next(error))
 })
 
 app.get('/',(req,res) => {
@@ -53,25 +35,28 @@ app.get('/info', (req, res) => {
     <div>${date}</div>`)
 })
 
-app.get('/api/persons/:id', (req, res) => {
+app.get('/api/persons/:id', (req, res, next) => {
     Person.findById(req.params.id)
         .then(person => {
-            res.json(person)
+            if (person) {
+                res.json(person)
+            } else {
+                res.status(404).end()
+            }
         })
-        
-
+        .catch(error => next(error))
 })
 
-app.delete('/api/persons/:id', (req, res)=> {
+app.delete('/api/persons/:id', (req, res,next)=> {
     
-    const id = Number(req.params.id)
-    persons = persons.filter(person => person.id !== id)
-
-    res.status(204).end()
-    
+    Person.findByIdAndDelete(req.params.id)
+        .then(result => {
+            res.status(204).end()
+        })
+        .catch(error => next(error))
 })
 
-app.post('/api/persons/', (req, res) => {
+app.post('/api/persons/', (req, res,next) => {
     
     const body = req.body
     
@@ -92,9 +77,11 @@ app.post('/api/persons/', (req, res) => {
         number: body.number
     })
 
-    person.save().then(savedPerson => {
-        res.json(savedPerson)
+    person.save()
+        .then(savedPerson => {
+            res.json(savedPerson)
     })
+        .catch(error => next(error))
     
 })
 
@@ -103,6 +90,16 @@ const unknownEndpoint = (request, response) => {
 }
 
 app.use(unknownEndpoint)
+
+const errorHandler = (error, request, response, next) => {
+    console.error(error.message)
+    if (error.name === 'CastError') {
+        return response.status(400).send({error: 'malformatted id'})
+    }
+    next(error)
+}
+
+app.use(errorHandler)
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, ()=> {
